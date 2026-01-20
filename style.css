@@ -1,0 +1,201 @@
+/* Cartoony, exaggerated, responsive envelope + paper letter */
+
+:root {
+  --bg: #ffe6ea;
+  --ink: #3a2323;
+  --paper: #fffbe7;
+
+  /* Sketch envelope palette */
+  --env-ink: #1b2c8e;
+  --env-fill: #fffdf6;
+  --flap-fill: #ffffff;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  margin: 0;
+  display: grid;
+  place-items: center;
+  overflow-x: hidden;
+}
+
+.stage {
+  width: 100vw;
+  height: 100vh;
+  display: grid;
+  place-items: center;
+}
+
+.envelope-wrap {
+  position: relative;
+  width: clamp(220px, 58vw, 420px);
+  aspect-ratio: 320 / 260;
+  filter: drop-shadow(0 10px 26px rgba(0,0,0,0.14));
+  perspective: 1200px;
+}
+
+#envelope-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: pointer;
+  transform-style: preserve-3d;
+}
+
+/* Flap animation: closed (down) -> open (up/back) */
+#flap-group {
+  transform-box: view-box;
+  transform-origin: 160px 92px;
+  transform: rotateX(0deg) translateZ(0);
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transition: transform 0.85s cubic-bezier(.22, 1.6, .25, 1);
+}
+
+.envelope-wrap.is-open #flap-group {
+  transform: rotateX(-160deg);
+}
+
+/* Letter as real paper (HTML) so it looks like a letter */
+.letter {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  width: 78%;
+  height: 56%;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  transform: translate(-50%, 18%) scaleY(0.15);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 5;
+  transition:
+    transform 0.85s cubic-bezier(.22, 1.6, .25, 1),
+    opacity 0.28s ease;
+}
+
+.envelope-wrap.is-open .letter {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, -58%) scaleY(1) rotate(-1deg);
+}
+
+.paper {
+  position: relative;
+  height: 100%;
+  background: var(--paper);
+  border: 5px solid rgba(27,44,142,0.75);
+  border-radius: 14px;
+  box-shadow: 0 10px 0 rgba(58,35,35,0.22);
+  overflow: hidden;
+}
+
+.paper::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(255,255,255,0.55), rgba(255,255,255,0) 40%),
+    repeating-linear-gradient(
+      to bottom,
+      rgba(215,38,96,0.0) 0px,
+      rgba(215,38,96,0.0) 18px,
+      rgba(215,38,96,0.08) 19px,
+      rgba(215,38,96,0.08) 20px
+    );
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+.paper-body {
+  position: relative;
+  padding: 18px 18px 18px;
+  text-align: center;
+  z-index: 1;
+  font-family: "Comic Sans MS", "Comic Sans", cursive;
+  color: #d72660;
+}
+
+.paper-body h2 {
+  margin: 16px 0 10px;
+  font-size: 28px;
+}
+
+.paper-body p {
+  margin: 0;
+  font-size: 18px;
+  opacity: 0.9;
+}
+
+/* Expanded letter should read like a real note (left aligned) */
+.envelope-wrap.is-expanded .paper-body {
+  text-align: left;
+  padding: 28px 34px 28px;
+}
+
+.envelope-wrap.is-expanded .paper-body h2 {
+  margin-top: 10px;
+}
+
+.envelope-wrap.is-expanded .paper-body p {
+  line-height: 1.6;
+  max-width: 60ch;
+}
+
+/* Collapsed state: no text, just subtle hint lines */
+.peek-lines {
+  margin-top: 10px;
+  display: grid;
+  gap: 9px;
+  justify-items: start;
+}
+
+.peek-lines span {
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(215, 38, 96, 0.18);
+}
+
+.peek-lines span:nth-child(1) { width: 78%; }
+.peek-lines span:nth-child(2) { width: 70%; }
+.peek-lines span:nth-child(3) { width: 74%; }
+.peek-lines span:nth-child(4) { width: 62%; }
+.peek-lines span:nth-child(5) { width: 76%; }
+.peek-lines span:nth-child(6) { width: 58%; }
+.peek-lines span:nth-child(7) { width: 72%; }
+.peek-lines span:nth-child(8) { width: 66%; }
+.peek-lines span:nth-child(9) { width: 44%; }
+
+.peek-lines span:nth-child(n+10) {
+  width: 70%;
+  opacity: 0.9;
+}
+
+.envelope-wrap.is-expanded .signature {
+  margin-top: 18px;
+  font-size: 18px;
+}
+
+/* Expanded letter becomes a modal-like paper */
+.envelope-wrap.is-expanded .letter {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  bottom: auto;
+  width: min(720px, 92vw);
+  height: min(76vh, 720px);
+  transform: translate(-50%, -50%) rotate(-1.5deg) scale(1);
+  opacity: 1;
+  z-index: 50;
+}
+
+.envelope-wrap.is-expanded .paper {
+  border-radius: 18px;
+  box-shadow: 0 18px 0 rgba(58,35,35,0.22), 0 30px 70px rgba(0,0,0,0.22);
+}
