@@ -763,6 +763,23 @@ function escapeHtml(s) {
 }
 
 // Paging logic for letter content
+
+// Fix: define _paperResizeRaf for resize debounce
+let _paperResizeRaf = 0;
+
+// Button click sound (paper twist)
+let buttonClickAudio = null;
+function playButtonClick() {
+  if (!buttonClickAudio) {
+    buttonClickAudio = new Audio('audio/699347__valenspire__paper_twist_02.wav');
+    buttonClickAudio.preload = 'auto';
+    buttonClickAudio.volume = 0.7;
+  }
+  try {
+    buttonClickAudio.currentTime = 0;
+    buttonClickAudio.play();
+  } catch {}
+}
 let currentPage = 0;
 
 const PAGE_PARAGRAPHS_PC = 5;
@@ -818,60 +835,87 @@ function computeFitPages() {
     return null;
   }
 
-  const buttonReserve = 84; // keep room for paging buttons
+  // Dynamically measure the actual button height + margin for accurate reservation
+  let buttonReserve = 56;
+  // Create a temp button to measure real rendered height
+  const tempBtn = document.createElement('div');
+  tempBtn.className = 'next-page-btn';
+  tempBtn.style.position = 'absolute';
+  tempBtn.style.visibility = 'hidden';
+  tempBtn.style.pointerEvents = 'none';
+  if (window.innerWidth <= 600) {
+    tempBtn.style.right = '10px';
+    tempBtn.style.bottom = '4px';
+    tempBtn.style.fontSize = '13px';
+    tempBtn.style.padding = '5px 8px';
+  } else {
+    tempBtn.style.right = '48px';
+    tempBtn.style.bottom = '36px';
+  }
+  tempBtn.innerText = 'Next Page →';
+  document.body.appendChild(tempBtn);
+  if (window.innerWidth <= 600) {
+    buttonReserve = tempBtn.offsetHeight + 4 + 2; // 4px bottom + 2px fudge for border/shadow
+  } else {
+    buttonReserve = tempBtn.offsetHeight + 36 + 4; // 36px bottom + 4px fudge for border/shadow
+  }
+  document.body.removeChild(tempBtn);
   const headerHtml = `<h2>${escapeHtml(title)} ${escapeHtml(recipientName)},</h2>`;
   const signatureReserve = signature ? `<p class="signature" style="visibility:hidden">${escapeHtml(signature)}</p>` : '';
 
-  function measureWithRange(start, end) {
-    const paras = message
-      .slice(start, end)
-      .map((p) => `<p>${escapeHtml(p)}</p>`)
-      .join('');
-    temp.innerHTML = `${headerHtml}${paras}${signatureReserve}<div style="height:${buttonReserve}px"></div>`;
+  // Word-level paging for maximum fill
+  const paraWordArrays = message.map(p => p.split(/(\s+)/));
+  function measureWordRange(startPara, startWord, endPara, endWord, withSignature = false, withButton = true) {
+    let html = `<h2>${escapeHtml(title)} ${escapeHtml(recipientName)},</h2>`;
+    for (let pi = startPara; pi <= endPara; ++pi) {
+      let words = paraWordArrays[pi];
+      let from = (pi === startPara) ? startWord : 0;
+      let to = (pi === endPara) ? endWord : words.length;
+      html += `<p>${escapeHtml(words.slice(from, to).join(''))}</p>`;
+    }
+    if (withSignature && signature) {
+      html += `<p class=\"signature\">${escapeHtml(signature)}</p>`;
+    } else if (signatureReserve) {
+      html += signatureReserve;
+    }
+    if (withButton) {
+      html += `<div class=\"next-page-btn\" style=\"position:absolute; right:48px; bottom:36px; font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08);\">Next Page →</div>`;
+    }
+    temp.innerHTML = `<div class=\"letter-content\">${html}</div>`;
     return temp.scrollHeight;
   }
 
   const pages = [];
-  let start = 0;
-  while (start < message.length) {
-    let end = Math.min(message.length, start + Math.max(1, getPageParagraphs()));
-    // Grow until it overflows, then step back
-    while (end <= message.length) {
-      const h = measureWithRange(start, end);
+  let paraIdx = 0, wordIdx = 0;
+  while (paraIdx < paraWordArrays.length) {
+    let best = null;
+    let testPara = paraIdx, testWord = wordIdx + 1;
+    while (true) {
+      // Advance to next paragraph if needed
+      if (testWord > paraWordArrays[testPara].length) {
+        testPara++;
+        testWord = 1;
+        if (testPara >= paraWordArrays.length) break;
+      }
+      // On the last page, measure with signature and no button
+      const isLast = (testPara === paraWordArrays.length - 1 && testWord >= paraWordArrays[testPara].length);
+      const h = measureWordRange(paraIdx, wordIdx, testPara, testWord, isLast && signature, !isLast);
       if (h > paperHeight) {
-        end = Math.max(start + 1, end - 1);
         break;
       }
-      if (end === message.length) break;
-      end += 1;
+      best = { endPara: testPara, endWord: testWord };
+      testWord++;
     }
-
-    // Safety: guarantee progress
-    if (end <= start) end = start + 1;
-    pages.push({ start, end });
-    start = end;
-  }
-
-  // Now ensure the final page fits with the real signature (if any)
-  if (signature && pages.length) {
-    const last = pages[pages.length - 1];
-    const tryFit = (s, e) => {
-      const paras = message
-        .slice(s, e)
-        .map((p) => `<p>${escapeHtml(p)}</p>`)
-        .join('');
-      temp.innerHTML = `${headerHtml}${paras}<p class="signature">${escapeHtml(signature)}</p><div style="height:${buttonReserve}px"></div>`;
-      return temp.scrollHeight;
-    };
-
-    while (last.end > last.start && tryFit(last.start, last.end) > paperHeight) {
-      last.end -= 1;
-      const moved = message[last.end - 1];
-      if (!moved) break;
-      // Move one paragraph to a new page before the signature
-      const beforeSig = { start: last.end - 1, end: last.end };
-      pages.splice(pages.length - 1, 0, beforeSig);
-      last.start = last.end;
+    if (!best) {
+      // Safety: at least one word per page
+      best = { endPara: paraIdx, endWord: wordIdx + 1 };
+    }
+    pages.push({ startPara: paraIdx, startWord: wordIdx, endPara: best.endPara, endWord: best.endWord });
+    paraIdx = best.endPara;
+    wordIdx = best.endWord;
+    if (wordIdx >= paraWordArrays[paraIdx]?.length) {
+      paraIdx++;
+      wordIdx = 0;
     }
   }
 
@@ -887,37 +931,59 @@ function recomputePagination() {
 
 function buildLetterContentHtml() {
   const pages = computedPages && computedPages.length ? computedPages : null;
-  let totalPages, startIdx, endIdx;
+  let totalPages, startPara, startWord, endPara, endWord;
   if (pages) {
-    // Safety clamp in case nav got out of bounds
     currentPage = clampNumber(currentPage, 0, pages.length - 1);
     totalPages = pages.length;
-    startIdx = pages[currentPage].start;
-    endIdx = pages[currentPage].end;
+    startPara = pages[currentPage].startPara;
+    startWord = pages[currentPage].startWord;
+    endPara = pages[currentPage].endPara;
+    endWord = pages[currentPage].endWord;
   } else {
-    const localPageCount = getPageParagraphs();
-    totalPages = Math.ceil(message.length / localPageCount);
-    startIdx = currentPage * localPageCount;
-    endIdx = startIdx + localPageCount;
+    // fallback: show all
+    totalPages = 1;
+    startPara = 0;
+    startWord = 0;
+    endPara = message.length - 1;
+    endWord = message[message.length - 1].split(/(\s+)/).length;
   }
-  const pageParagraphs = message.slice(startIdx, endIdx).map((p) => `<p>${escapeHtml(p)}</p>`).join('');
-  const sig = signature && currentPage === totalPages - 1 ? `<p class="signature">${escapeHtml(signature)}</p>` : '';
+  // Rebuild the page content using the same logic as measurement
+  let html = `<h2>${escapeHtml(title)} ${escapeHtml(recipientName)},</h2>`;
+  for (let pi = startPara; pi <= endPara; ++pi) {
+    let words = message[pi].split(/(\s+)/);
+    let from = (pi === startPara) ? startWord : 0;
+    let to = (pi === endPara) ? endWord : words.length;
+    html += `<p>${escapeHtml(words.slice(from, to).join(''))}</p>`;
+  }
+  const isLast = (currentPage === totalPages - 1);
+  const sig = signature && isLast ? `<p class=\"signature\">${escapeHtml(signature)}</p>` : '';
   let nextBtn = '';
   let backBtn = '';
-  if (totalPages > 1 && currentPage < totalPages - 1) {
-    nextBtn = `<div class="next-page-btn" role="button" tabindex="0" style="position:absolute; right:32px; bottom:24px; transform:rotate(-1.5deg); font-size:20px; padding:8px 18px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;">Next Page →</div>`;
+  // Mobile: move buttons outside .paper-body for true bottom placement
+  if (window.innerWidth <= 600) {
+    if (!isLast) {
+      nextBtn = `<div class=\"next-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; right:10px; bottom:4px; font-size:13px; padding:5px 8px; border-radius:8px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none; max-width:140px; width:auto; z-index:10;\">Next Page →</div>`;
+    }
+    if (currentPage > 0) {
+      backBtn = `<div class=\"back-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; left:10px; bottom:4px; font-size:13px; padding:5px 8px; border-radius:8px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none; max-width:140px; width:auto; z-index:10;\">← Back</div>`;
+    }
+    // Render only the content and signature inside letter-content, buttons outside
+    return `<div class=\"letter-content\" aria-live=\"polite\">${html}${sig}</div>${backBtn}${nextBtn}`;
   }
-  if (totalPages > 1 && currentPage > 0) {
-    backBtn = `<div class="back-page-btn" role="button" tabindex="0" style="position:absolute; left:32px; bottom:24px; transform:rotate(-1.5deg); font-size:20px; padding:8px 18px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;">← Back</div>`;
+  // Desktop: unchanged
+  if (!isLast) {
+    nextBtn = `<div class=\"next-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; right:48px; bottom:36px; transform:rotate(-1.5deg); font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;\">Next Page →</div>`;
   }
-  return `
-    <div class="letter-content" aria-live="polite">
-      <h2>${escapeHtml(title)} ${escapeHtml(recipientName)},</h2>
-      ${pageParagraphs}
-      ${sig}
-      ${backBtn}${nextBtn}
-    </div>
-  `;
+  if (currentPage > 0) {
+    backBtn = `<div class=\"back-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; left:48px; bottom:36px; transform:rotate(-1.5deg); font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;\">← Back</div>`;
+  }
+  // On the last page, if both buttons would overflow, only show the back button
+  if (isLast && currentPage > 0) {
+    // Only show back button, but place it at the bottom right (where next button would be)
+    const rightBackBtn = `<div class=\"back-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; right:48px; left:auto; bottom:80px; transform:rotate(-1.5deg); font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;\">← Back</div>`;
+    return `<div class=\"letter-content\" aria-live=\"polite\">${html}${sig}${rightBackBtn}</div>`;
+  }
+  return `<div class=\"letter-content\" aria-live=\"polite\">${html}${sig}${backBtn}${nextBtn}</div>`;
 }
 
 function getTotalPagesForNav() {
@@ -938,21 +1004,49 @@ function gotoPage(nextPage) {
 
 function renderPaper() {
   const spans = Array.from({ length: Math.max(4, peekLineCount) }, () => '<span></span>').join('');
-  letterButton.innerHTML = `
-    <div class="paper">
-      <div class="paper-body">
-        <div class="peek-lines" aria-hidden="true">
-          ${spans}
+  // On mobile, navigation buttons are rendered outside .paper-body for true bottom anchoring
+  if (window.innerWidth <= 600) {
+    // Split content and buttons
+    const contentAndBtns = buildLetterContentHtml();
+    // contentAndBtns is: <div class="letter-content">...</div>[backBtn][nextBtn]
+    // Extract the letter-content and the buttons
+    const match = contentAndBtns.match(/^(<div class=\"letter-content\"[\s\S]*?<\/div>)([\s\S]*)$/);
+    let letterContent = contentAndBtns;
+    let navBtns = '';
+    if (match) {
+      letterContent = match[1];
+      navBtns = match[2];
+    }
+    letterButton.innerHTML = `
+      <div class="paper">
+        <div class="paper-body">
+          <div class="peek-lines" aria-hidden="true">
+            ${spans}
+          </div>
+          ${letterContent}
         </div>
-        ${buildLetterContentHtml()}
+        ${navBtns}
       </div>
-    </div>
-  `;
+    `;
+  } else {
+    // Desktop: unchanged
+    letterButton.innerHTML = `
+      <div class="paper">
+        <div class="paper-body">
+          <div class="peek-lines" aria-hidden="true">
+            ${spans}
+          </div>
+          ${buildLetterContentHtml()}
+        </div>
+      </div>
+    `;
+  }
   // Add next/back page button events
   const nextBtn = letterButton.querySelector('.next-page-btn');
   if (nextBtn) {
     const goNext = (e) => {
       e.stopPropagation();
+      playButtonClick();
       gotoPage(currentPage + 1);
     };
     nextBtn.addEventListener('click', goNext);
@@ -967,6 +1061,7 @@ function renderPaper() {
   if (backBtn) {
     const goBack = (e) => {
       e.stopPropagation();
+      playButtonClick();
       gotoPage(currentPage - 1);
     };
     backBtn.addEventListener('click', goBack);
@@ -979,8 +1074,13 @@ function renderPaper() {
   }
 }
 
-// Reset currentPage if page count changes on resize (only add once, globally)
-let _paperResizeRaf = 0;
+// Remove debug overlay and restore original renderPaper usage
+// Remove showPagingDebug, renderPaperWithDebug, and renderPaperOrig
+// Replace all renderPaperWithDebug() calls with renderPaper()
+
+// At the end of the file, after all event listeners and initial render:
+renderPaper();
+
 window.addEventListener(
   'resize',
   () => {
@@ -1029,18 +1129,14 @@ envelopeClickTarget.addEventListener('click', () => {
 
 letterButton.addEventListener('click', (e) => {
   if (!isOpen) return;
-
   // Only allow clicks on the actual paper (prevents "invisible box" clicks)
   if (!e.target.closest('.paper')) return;
-
   // Paper click shouldn't also toggle the envelope
   e.stopPropagation();
-
   if (!isExpanded) {
     envelope.classList.add('is-expanded');
     isExpanded = true;
     playPaperSlide();
-    // Wait for expanded styles to apply, then measure for fit-to-page
     computedPages = null;
     setTimeout(() => {
       recomputePagination();
@@ -1048,11 +1144,9 @@ letterButton.addEventListener('click', (e) => {
     }, 100);
     return;
   }
-
   envelope.classList.remove('is-expanded');
   isExpanded = false;
   playPaperSlide();
-  // No re-render needed; CSS toggles peek vs content
 });
 
 document.addEventListener('keydown', (e) => {
@@ -1061,10 +1155,7 @@ document.addEventListener('keydown', (e) => {
   envelope.classList.remove('is-expanded');
   isExpanded = false;
   playPaperSlide();
-  // No re-render needed; CSS toggles peek vs content
 });
-
-renderPaper();
 
 // Start hearts
 const heartsSystem = new HeartsSystem(heartsCanvas);

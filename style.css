@@ -1,3 +1,31 @@
+@media (max-width: 600px) {
+  .envelope-wrap.is-expanded .paper {
+    position: relative;
+  }
+  .envelope-wrap.is-expanded .next-page-btn,
+  .envelope-wrap.is-expanded .back-page-btn {
+    position: absolute !important;
+    bottom: 44px !important;
+    z-index: 10;
+    font-size: 13px !important;
+    padding: 5px 8px !important;
+    min-width: 70px;
+    max-width: 140px;
+    width: auto;
+    border-radius: 8px;
+    margin-bottom: 0;
+    margin-top: 0;
+    box-sizing: border-box;
+  }
+  .envelope-wrap.is-expanded .next-page-btn {
+    right: 10px !important;
+    left: auto !important;
+  }
+  .envelope-wrap.is-expanded .back-page-btn {
+    left: 10px !important;
+    right: auto !important;
+  }
+}
 /* Cartoony, exaggerated, responsive envelope + paper letter */
 
 :root {
@@ -255,4 +283,20 @@ body {
     max-height: 54vh;
     min-height: 120px;
   }
-}
+
+  .envelope-wrap.is-expanded .paper-body {
+    padding-bottom: 120px;
+  }
+  .envelope-wrap.is-expanded .paper-body h2 {
+    font-size: 17px;
+    margin: 8px 0 5px;
+  }
+  .envelope-wrap.is-expanded .paper-body p {
+    font-size: 13px;
+    margin: 5px 0;
+  }
+  .envelope-wrap.is-expanded .signature {
+    font-size: 12px;
+  }
+
+/* Removed duplicate/old mobile button rules to allow main mobile button rule to take effect */
