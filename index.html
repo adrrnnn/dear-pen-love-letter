@@ -7,6 +7,7 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <canvas id="hearts-canvas" aria-hidden="true"></canvas>
   <div class="stage">
     <div class="envelope-wrap" id="envelope">
       <button class="letter" id="letter" type="button" aria-label="Open letter" title="Open letter"></button>
@@ -30,43 +31,47 @@
           </clipPath>
         </defs>
 
-        <!-- Base / outline -->
-        <g id="env-ink" filter="url(#roughen)">
-          <rect id="env-outline" x="58" y="92" width="204" height="132" rx="10" fill="var(--env-fill)" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+        <!-- Click target: only painted strokes/fills respond (not the full SVG box) -->
+        <g id="env-click">
+          <!-- Base / outline -->
+          <g id="env-ink" filter="url(#roughen)">
+            <rect id="env-outline" x="58" y="92" width="204" height="132" rx="10" fill="var(--env-fill)" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
 
-          <!-- Bottom fold lines (the 'X') -->
-          <path d="M58 224 L160 158 L262 224" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M58 224 L160 158" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-          <path d="M262 224 L160 158" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+            <!-- Bottom fold lines (the 'X') -->
+            <path d="M58 224 L160 158 L262 224" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M58 224 L160 158" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+            <path d="M262 224 L160 158" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
 
-          <!-- Side folds (subtle) -->
-          <g clip-path="url(#env-clip)" opacity="0.9">
-            <path d="M58 92 L160 158 L262 92" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
+            <!-- Side folds (subtle) -->
+            <g clip-path="url(#env-clip)" opacity="0.9">
+              <path d="M58 92 L160 158 L262 92" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" opacity="0.85" />
+            </g>
+
+            <!-- Hatch shading like pen sketch -->
+            <g clip-path="url(#shade-left)" opacity="0.22">
+              <path d="M30 100 L170 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
+              <path d="M40 100 L180 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
+              <path d="M50 100 L190 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
+              <path d="M60 100 L200 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
+            </g>
+            <g clip-path="url(#shade-right)" opacity="0.22">
+              <path d="M290 100 L150 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
+              <path d="M280 100 L140 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
+              <path d="M270 100 L130 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
+              <path d="M260 100 L120 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
+            </g>
           </g>
 
-          <!-- Hatch shading like pen sketch -->
-          <g clip-path="url(#shade-left)" opacity="0.22">
-            <path d="M30 100 L170 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
-            <path d="M40 100 L180 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
-            <path d="M50 100 L190 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
-            <path d="M60 100 L200 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
+          <!-- Flap (closed by default, curved point; opens upward on click) -->
+          <g id="flap-group" filter="url(#roughen)">
+            <path id="flap-fill" d="M58 92 L262 92 L166 150 Q160 157 154 150 L58 92 Z" fill="var(--flap-fill)" />
+            <path id="flap-outline" d="M58 92 L154 150 Q160 157 166 150 L262 92" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
           </g>
-          <g clip-path="url(#shade-right)" opacity="0.22">
-            <path d="M290 100 L150 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
-            <path d="M280 100 L140 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
-            <path d="M270 100 L130 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
-            <path d="M260 100 L120 240" stroke="var(--env-ink)" stroke-width="2" stroke-linecap="round" />
-          </g>
-        </g>
-
-        <!-- Flap (closed by default, curved point; opens upward on click) -->
-        <g id="flap-group" filter="url(#roughen)">
-          <path id="flap-fill" d="M58 92 L262 92 L166 150 Q160 157 154 150 L58 92 Z" fill="var(--flap-fill)" />
-          <path id="flap-outline" d="M58 92 L154 150 Q160 157 166 150 L262 92" fill="none" stroke="var(--env-ink)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
         </g>
       </svg>
     </div>
   </div>
+  <script src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.min.js"></script>
   <script src="config.js"></script>
   <script src="script.js"></script>
 </body>

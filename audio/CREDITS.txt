@@ -1,0 +1,11 @@
+Sound effects in this folder:
+
+- envelope-open.wav
+- letter-click.wav
+
+Source:
+- "CC0-Public-Domain-Sounds" by lavenderdotpet (GitHub)
+  Folder: "bb - Books, Paper, Writing (Jan 2021)"
+
+License:
+- CC0 / Public Domain (no attribution required)
