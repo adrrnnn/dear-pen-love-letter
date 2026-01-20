@@ -343,18 +343,10 @@ const letterButton = document.getElementById('letter');
 const heartsCanvas = document.getElementById('hearts-canvas');
 
 const cfg = window.LOVE_LETTER_CONFIG || {};
-const recipientName = cfg.recipientName || 'Pen';
-const title = cfg.title || 'Dear';
-const message = [
-  "dear love,",
-  "when i think of you, i think about timing, and how rarely it lines up the way people expect. we met when neither of us was ready for anything new. you were healing and keeping your distance. i wasn’t expecting to feel anything serious. but over time, i realized i cared about you more than i meant to.",
-  "there were many moments when i didn’t understand your decisions. times when the way you moved through things felt distant to me. i know you felt the same about me. we are different people, and sometimes we speak past each other without meaning to. wanting you didn’t always come with understanding, but it was real all the same.",
-  "you were the one who pulled away, and i understood why even when it hurt. i wanted you before you were ready to let anyone close, and i didn’t know what to do with that feeling except sit with it. there were months when we didn’t talk at all. life kept moving, but something important felt unfinished.",
-  "when we found our way back, we still didn’t understand each other. we argued over small things that carried more weight than they should have. but i knew what i wanted even when i couldn’t explain it well. i wanted you. not when it was easy. not when it was certain. just you. so when you said yes on december 30, it didn’t feel sudden. it felt like something that took time to become true.",
-  "today you graduate. people will see the smiles and the photos and call it an achievement. i see the work behind it. the days you were tired. the moments you doubted yourself. i watched you keep going anyway. that’s what makes me proud of you. not just the ending, but everything it took to get here.",
-  "i loved you before we had a name for us. i love you now that we do. i don’t expect us to understand each other perfectly. but i want to keep learning you, and i want you to keep learning me. whatever comes after today, i want to face it with you"
-];
-const signature = cfg.signature || '';
+const recipientName = cfg.recipientName;
+const title = cfg.title;
+const message = cfg.message;
+const signature = cfg.signature;
 const peekLineCount = Number.isFinite(cfg.peekLineCount) ? cfg.peekLineCount : 11;
 
 // ----------------------
