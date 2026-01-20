@@ -1,7 +1,7 @@
 // Simple customization entrypoint for public use.
 // Edit values below (no build step needed).
 window.LOVE_LETTER_CONFIG = {
-  recipientName: "Pen",
+  recipientName: "Recipient",
   title: "Dear",
   // Write your message as an array of paragraphs.
   message: [
@@ -9,7 +9,7 @@ window.LOVE_LETTER_CONFIG = {
     "You make my days brighter, and I’m really lucky to have you.",
     "I hope this little note makes you smile.",
   ],
-  signature: "— Adrian",
+  signature: "— Me",
 
   // Collapsed (peek) placeholder line count
   peekLineCount: 11,

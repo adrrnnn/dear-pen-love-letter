@@ -51,8 +51,9 @@ body {
 
 .envelope-wrap {
   position: relative;
-  width: clamp(220px, 58vw, 420px);
-  aspect-ratio: 320 / 260;
+  /* Use fit-content so the div wraps the SVG's actual drawing, not a big box */
+  width: fit-content;
+  height: fit-content;
   filter: drop-shadow(0 10px 26px rgba(0,0,0,0.14));
   perspective: 1200px;
 }
