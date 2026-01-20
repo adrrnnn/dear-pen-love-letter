@@ -160,14 +160,15 @@ body {
 
 .paper-body p {
   margin: 10px 0;
-  font-size: 18px;
-  opacity: 0.9;
+  font-size: 24px;
+  opacity: 0.96;
 }
 
 /* Expanded letter should read like a real note (left aligned) */
 .envelope-wrap.is-expanded .paper-body {
   text-align: left;
-  padding: 28px 34px 28px;
+  /* extra bottom padding so paging buttons always fit */
+  padding: 28px 34px 96px;
 }
 
 .envelope-wrap.is-expanded .paper-body h2 {
@@ -242,4 +243,16 @@ body {
 .envelope-wrap.is-expanded .paper {
   border-radius: 18px;
   box-shadow: 0 18px 0 rgba(58,35,35,0.22), 0 30px 70px rgba(0,0,0,0.22);
+  height: 76vh;
+  min-height: 180px;
+  max-height: 76vh;
+  overflow-y: hidden;
+}
+
+@media (max-width: 600px) {
+  .envelope-wrap.is-expanded .paper {
+    height: 54vh;
+    max-height: 54vh;
+    min-height: 120px;
+  }
 }

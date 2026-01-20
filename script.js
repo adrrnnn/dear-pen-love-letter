@@ -312,7 +312,15 @@ const heartsCanvas = document.getElementById('hearts-canvas');
 const cfg = window.LOVE_LETTER_CONFIG || {};
 const recipientName = cfg.recipientName || 'Pen';
 const title = cfg.title || 'Dear';
-const message = Array.isArray(cfg.message) ? cfg.message : ['...'];
+const message = [
+  "dear love,",
+  "when i think of you, i think about timing, and how rarely it lines up the way people expect. we met when neither of us was ready for anything new. you were healing and keeping your distance. i wasn’t expecting to feel anything serious. but over time, i realized i cared about you more than i meant to.",
+  "there were many moments when i didn’t understand your decisions. times when the way you moved through things felt distant to me. i know you felt the same about me. we are different people, and sometimes we speak past each other without meaning to. wanting you didn’t always come with understanding, but it was real all the same.",
+  "you were the one who pulled away, and i understood why even when it hurt. i wanted you before you were ready to let anyone close, and i didn’t know what to do with that feeling except sit with it. there were months when we didn’t talk at all. life kept moving, but something important felt unfinished.",
+  "when we found our way back, we still didn’t understand each other. we argued over small things that carried more weight than they should have. but i knew what i wanted even when i couldn’t explain it well. i wanted you. not when it was easy. not when it was certain. just you. so when you said yes on december 30, it didn’t feel sudden. it felt like something that took time to become true.",
+  "today you graduate. people will see the smiles and the photos and call it an achievement. i see the work behind it. the days you were tired. the moments you doubted yourself. i watched you keep going anyway. that’s what makes me proud of you. not just the ending, but everything it took to get here.",
+  "i loved you before we had a name for us. i love you now that we do. i don’t expect us to understand each other perfectly. but i want to keep learning you, and i want you to keep learning me. whatever comes after today, i want to face it with you"
+];
 const signature = cfg.signature || '';
 const peekLineCount = Number.isFinite(cfg.peekLineCount) ? cfg.peekLineCount : 11;
 
@@ -721,14 +729,136 @@ function escapeHtml(s) {
   return String(s).replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Paging logic for letter content
+let currentPage = 0;
+
+const PAGE_PARAGRAPHS_PC = 5;
+const PAGE_PARAGRAPHS_MOBILE = 3;
+
+function getPageParagraphs() {
+  return window.innerWidth <= 600 ? PAGE_PARAGRAPHS_MOBILE : PAGE_PARAGRAPHS_PC;
+}
+
+let computedPages = null;
+
+function getPaperMetricsForPaging() {
+  const paper = letterButton && letterButton.querySelector('.paper');
+  const paperBody = letterButton && letterButton.querySelector('.paper-body');
+  if (!paper || !paperBody) return null;
+  // Only compute fit-to-page in expanded mode (when the letter is modal-like)
+  if (!envelope.classList.contains('is-expanded')) return null;
+  return {
+    paperHeight: paper.clientHeight,
+    bodyWidth: paperBody.clientWidth,
+  };
+}
+
+function computeFitPages() {
+  const metrics = getPaperMetricsForPaging();
+  if (!metrics) return null;
+
+  const { paperHeight, bodyWidth } = metrics;
+  if (!paperHeight || !bodyWidth) return null;
+
+  const temp = document.createElement('div');
+  temp.className = 'paper-body';
+  temp.style.position = 'fixed';
+  temp.style.left = '-9999px';
+  temp.style.top = '0';
+  temp.style.width = `${bodyWidth}px`;
+  temp.style.visibility = 'hidden';
+  temp.style.pointerEvents = 'none';
+  document.body.appendChild(temp);
+
+  const buttonReserve = 84; // keep room for paging buttons
+  const headerHtml = `<h2>${escapeHtml(title)} ${escapeHtml(recipientName)},</h2>`;
+  const signatureReserve = signature ? `<p class="signature" style="visibility:hidden">${escapeHtml(signature)}</p>` : '';
+
+  function measureWithRange(start, end) {
+    const paras = message
+      .slice(start, end)
+      .map((p) => `<p>${escapeHtml(p)}</p>`)
+      .join('');
+    temp.innerHTML = `${headerHtml}${paras}${signatureReserve}<div style="height:${buttonReserve}px"></div>`;
+    return temp.scrollHeight;
+  }
+
+  const pages = [];
+  let start = 0;
+  while (start < message.length) {
+    let end = Math.min(message.length, start + Math.max(1, getPageParagraphs()));
+    // Grow until it overflows, then step back
+    while (end <= message.length) {
+      const h = measureWithRange(start, end);
+      if (h > paperHeight) {
+        end = Math.max(start + 1, end - 1);
+        break;
+      }
+      if (end === message.length) break;
+      end += 1;
+    }
+
+    // Safety: guarantee progress
+    if (end <= start) end = start + 1;
+    pages.push({ start, end });
+    start = end;
+  }
+
+  // Now ensure the final page fits with the real signature (if any)
+  if (signature && pages.length) {
+    const last = pages[pages.length - 1];
+    const tryFit = (s, e) => {
+      const paras = message
+        .slice(s, e)
+        .map((p) => `<p>${escapeHtml(p)}</p>`)
+        .join('');
+      temp.innerHTML = `${headerHtml}${paras}<p class="signature">${escapeHtml(signature)}</p><div style="height:${buttonReserve}px"></div>`;
+      return temp.scrollHeight;
+    };
+
+    while (last.end > last.start && tryFit(last.start, last.end) > paperHeight) {
+      last.end -= 1;
+      const moved = message[last.end - 1];
+      if (!moved) break;
+      // Move one paragraph to a new page before the signature
+      const beforeSig = { start: last.end - 1, end: last.end };
+      pages.splice(pages.length - 1, 0, beforeSig);
+      last.start = last.end;
+    }
+  }
+
+  document.body.removeChild(temp);
+  return pages;
+}
+
+function recomputePagination() {
+  computedPages = computeFitPages();
+  if (!computedPages || !computedPages.length) return;
+  currentPage = clampNumber(currentPage, 0, computedPages.length - 1);
+}
+
 function buildLetterContentHtml() {
-  const paragraphs = message.map((p) => `<p>${escapeHtml(p)}</p>`).join('');
-  const sig = signature ? `<p class="signature">${escapeHtml(signature)}</p>` : '';
+  const pages = computedPages && computedPages.length ? computedPages : null;
+  const PAGE_PARAGRAPHS = getPageParagraphs();
+  const totalPages = pages ? pages.length : Math.ceil(message.length / PAGE_PARAGRAPHS);
+  const startIdx = pages ? pages[currentPage].start : currentPage * PAGE_PARAGRAPHS;
+  const endIdx = pages ? pages[currentPage].end : startIdx + PAGE_PARAGRAPHS;
+  const pageParagraphs = message.slice(startIdx, endIdx).map((p) => `<p>${escapeHtml(p)}</p>`).join('');
+  const sig = signature && currentPage === totalPages - 1 ? `<p class="signature">${escapeHtml(signature)}</p>` : '';
+  let nextBtn = '';
+  let backBtn = '';
+  if (totalPages > 1 && currentPage < totalPages - 1) {
+    nextBtn = `<button class="next-page-btn" style="position:absolute; right:32px; bottom:24px; transform:rotate(-1.5deg); font-size:20px; padding:8px 18px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer;">Next Page →</button>`;
+  }
+  if (totalPages > 1 && currentPage > 0) {
+    backBtn = `<button class="back-page-btn" style="position:absolute; left:32px; bottom:24px; transform:rotate(-1.5deg); font-size:20px; padding:8px 18px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer;">← Back</button>`;
+  }
   return `
     <div class="letter-content" aria-live="polite">
       <h2>${escapeHtml(title)} ${escapeHtml(recipientName)},</h2>
-      ${paragraphs}
+      ${pageParagraphs}
       ${sig}
+      ${backBtn}${nextBtn}
     </div>
   `;
 }
@@ -745,7 +875,43 @@ function renderPaper() {
       </div>
     </div>
   `;
+  // Add next/back page button events
+  const nextBtn = letterButton.querySelector('.next-page-btn');
+  if (nextBtn) {
+    nextBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentPage++;
+      renderPaper();
+    });
+  }
+  const backBtn = letterButton.querySelector('.back-page-btn');
+  if (backBtn) {
+    backBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentPage--;
+      renderPaper();
+    });
+  }
 }
+
+// Reset currentPage if page count changes on resize (only add once, globally)
+let _paperResizeRaf = 0;
+window.addEventListener(
+  'resize',
+  () => {
+    if (_paperResizeRaf) return;
+    _paperResizeRaf = window.requestAnimationFrame(() => {
+      _paperResizeRaf = 0;
+      recomputePagination();
+      const pages = computedPages && computedPages.length ? computedPages : null;
+      const PAGE_PARAGRAPHS = getPageParagraphs();
+      const totalPages = pages ? pages.length : Math.max(1, Math.ceil(message.length / PAGE_PARAGRAPHS));
+      currentPage = clampNumber(currentPage, 0, totalPages - 1);
+      renderPaper();
+    });
+  },
+  { passive: true }
+);
 
 envelopeClickTarget.addEventListener('click', () => {
   // Toggle: closed -> open, open -> close (letter slides back in)
