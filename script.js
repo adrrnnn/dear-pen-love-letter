@@ -176,8 +176,13 @@ function ensureSfxPlayers() {
 function playPaperRustle() {
   const seekSeconds = getSfxSeekSeconds('envelope', 1.6);
   const playSeconds = getSfxPlaySeconds('envelope', 0);
-  // Prefer HTMLAudio for file:// compatibility; Tone.Player for http(s)
-  if (isFileProtocol() || typeof Tone === 'undefined') {
+  // Prefer HTMLAudio when Tone isn't available OR isn't running yet.
+  if (
+    isFileProtocol() ||
+    typeof Tone === 'undefined' ||
+    !Tone.context ||
+    Tone.context.state !== 'running'
+  ) {
     ensureHtmlAudio();
     playHtmlAudio(htmlEnvelopeOpen, seekSeconds, playSeconds);
     return;
@@ -187,11 +192,17 @@ function playPaperRustle() {
   ensureSfxPlayers();
 
   if (sfxEnvelopeOpen && sfxEnvelopeOpen.loaded) {
-    sfxEnvelopeOpen.playbackRate = 0.98 + Math.random() * 0.04;
+    if (typeof sfxEnvelopeOpen.playbackRate === 'number') {
+      sfxEnvelopeOpen.playbackRate = 0.98 + Math.random() * 0.04;
+    }
     const dur = sfxEnvelopeOpen.buffer ? sfxEnvelopeOpen.buffer.duration : 0;
     const t = dur ? clampNumber(seekSeconds, 0, Math.max(0, dur - 0.05)) : 0;
     const maxPlay = playSeconds > 0 && dur ? clampNumber(playSeconds, 0, Math.max(0.01, dur - t)) : undefined;
-    sfxEnvelopeOpen.start(undefined, t, maxPlay);
+    if (typeof sfxEnvelopeOpen.start === 'function') {
+      try {
+        sfxEnvelopeOpen.start(undefined, t, maxPlay);
+      } catch (e) {}
+    }
     return;
   }
 
@@ -199,7 +210,11 @@ function playPaperRustle() {
   const now = Tone.now();
   const noise = new Tone.Noise('white').start(now);
   const filter = new Tone.Filter(5200, 'lowpass').toDestination();
-  filter.volume.value = -24;
+  try {
+    if (filter && filter.volume && typeof filter.volume.value === 'number') {
+      filter.volume.value = -24;
+    }
+  } catch {}
   const env = new Tone.AmplitudeEnvelope({
     attack: 0.02,
     decay: 0.16,
@@ -220,8 +235,13 @@ function playEnvelopeClose() {
   const seekSeconds = getSfxSeekByKey('envelopeCloseSeekSeconds', getSfxSeekSeconds('envelope', 1.6));
   const playSeconds = getSfxPlayByKey('envelopeClosePlaySeconds', getSfxPlaySeconds('envelope', 0));
 
-  // Prefer HTMLAudio for file:// compatibility; Tone.Player for http(s)
-  if (isFileProtocol() || typeof Tone === 'undefined') {
+  // Prefer HTMLAudio when Tone isn't available OR isn't running yet.
+  if (
+    isFileProtocol() ||
+    typeof Tone === 'undefined' ||
+    !Tone.context ||
+    Tone.context.state !== 'running'
+  ) {
     ensureHtmlAudio();
     playHtmlAudio(htmlEnvelopeOpen, seekSeconds, playSeconds);
     return;
@@ -243,7 +263,11 @@ function playEnvelopeClose() {
   const now = Tone.now();
   const noise = new Tone.Noise('white').start(now);
   const filter = new Tone.Filter(5200, 'lowpass').toDestination();
-  filter.volume.value = -24;
+  try {
+    if (filter && filter.volume && typeof filter.volume.value === 'number') {
+      filter.volume.value = -24;
+    }
+  } catch {}
   const env = new Tone.AmplitudeEnvelope({
     attack: 0.02,
     decay: 0.16,
@@ -264,8 +288,13 @@ function playEnvelopeClose() {
 function playPaperSlide() {
   const seekSeconds = getSfxSeekSeconds('letter', 1.4);
   const playSeconds = getSfxPlaySeconds('letter', 0);
-  // Prefer HTMLAudio for file:// compatibility; Tone.Player for http(s)
-  if (isFileProtocol() || typeof Tone === 'undefined') {
+  // Prefer HTMLAudio when Tone isn't available OR isn't running yet.
+  if (
+    isFileProtocol() ||
+    typeof Tone === 'undefined' ||
+    !Tone.context ||
+    Tone.context.state !== 'running'
+  ) {
     ensureHtmlAudio();
     playHtmlAudio(htmlLetterClick, seekSeconds, playSeconds);
     return;
@@ -287,7 +316,11 @@ function playPaperSlide() {
   const now = Tone.now();
   const noise = new Tone.Noise('white').start(now);
   const filter = new Tone.Filter(3000, 'lowpass').toDestination();
-  filter.volume.value = -20;
+  try {
+    if (filter && filter.volume && typeof filter.volume.value === 'number') {
+      filter.volume.value = -20;
+    }
+  } catch {}
   const env = new Tone.AmplitudeEnvelope({
     attack: 0.006,
     decay: 0.11,
@@ -768,6 +801,14 @@ function computeFitPages() {
   temp.style.width = `${bodyWidth}px`;
   temp.style.visibility = 'hidden';
   temp.style.pointerEvents = 'none';
+  // Match expanded paper padding for mobile/desktop
+  if (window.innerWidth <= 600) {
+    temp.style.padding = '28px 34px 96px';
+    temp.style.fontSize = '20px';
+  } else {
+    temp.style.padding = '28px 34px 96px';
+    temp.style.fontSize = '24px';
+  }
   document.body.appendChild(temp);
 
   const buttonReserve = 84; // keep room for paging buttons
@@ -839,19 +880,28 @@ function recomputePagination() {
 
 function buildLetterContentHtml() {
   const pages = computedPages && computedPages.length ? computedPages : null;
-  const PAGE_PARAGRAPHS = getPageParagraphs();
-  const totalPages = pages ? pages.length : Math.ceil(message.length / PAGE_PARAGRAPHS);
-  const startIdx = pages ? pages[currentPage].start : currentPage * PAGE_PARAGRAPHS;
-  const endIdx = pages ? pages[currentPage].end : startIdx + PAGE_PARAGRAPHS;
+  let totalPages, startIdx, endIdx;
+  if (pages) {
+    // Safety clamp in case nav got out of bounds
+    currentPage = clampNumber(currentPage, 0, pages.length - 1);
+    totalPages = pages.length;
+    startIdx = pages[currentPage].start;
+    endIdx = pages[currentPage].end;
+  } else {
+    const localPageCount = getPageParagraphs();
+    totalPages = Math.ceil(message.length / localPageCount);
+    startIdx = currentPage * localPageCount;
+    endIdx = startIdx + localPageCount;
+  }
   const pageParagraphs = message.slice(startIdx, endIdx).map((p) => `<p>${escapeHtml(p)}</p>`).join('');
   const sig = signature && currentPage === totalPages - 1 ? `<p class="signature">${escapeHtml(signature)}</p>` : '';
   let nextBtn = '';
   let backBtn = '';
   if (totalPages > 1 && currentPage < totalPages - 1) {
-    nextBtn = `<button class="next-page-btn" style="position:absolute; right:32px; bottom:24px; transform:rotate(-1.5deg); font-size:20px; padding:8px 18px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer;">Next Page →</button>`;
+    nextBtn = `<div class="next-page-btn" role="button" tabindex="0" style="position:absolute; right:32px; bottom:24px; transform:rotate(-1.5deg); font-size:20px; padding:8px 18px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;">Next Page →</div>`;
   }
   if (totalPages > 1 && currentPage > 0) {
-    backBtn = `<button class="back-page-btn" style="position:absolute; left:32px; bottom:24px; transform:rotate(-1.5deg); font-size:20px; padding:8px 18px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer;">← Back</button>`;
+    backBtn = `<div class="back-page-btn" role="button" tabindex="0" style="position:absolute; left:32px; bottom:24px; transform:rotate(-1.5deg); font-size:20px; padding:8px 18px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;">← Back</div>`;
   }
   return `
     <div class="letter-content" aria-live="polite">
@@ -861,6 +911,22 @@ function buildLetterContentHtml() {
       ${backBtn}${nextBtn}
     </div>
   `;
+}
+
+function getTotalPagesForNav() {
+  if (computedPages && computedPages.length) return computedPages.length;
+  const per = getPageParagraphs();
+  return Math.max(1, Math.ceil(message.length / per));
+}
+
+function gotoPage(nextPage) {
+  // In expanded mode we paginate by measurement; ensure it's computed.
+  if (envelope.classList.contains('is-expanded') && (!computedPages || !computedPages.length)) {
+    recomputePagination();
+  }
+  const total = getTotalPagesForNav();
+  currentPage = clampNumber(nextPage, 0, total - 1);
+  renderPaper();
 }
 
 function renderPaper() {
@@ -878,18 +944,30 @@ function renderPaper() {
   // Add next/back page button events
   const nextBtn = letterButton.querySelector('.next-page-btn');
   if (nextBtn) {
-    nextBtn.addEventListener('click', (e) => {
+    const goNext = (e) => {
       e.stopPropagation();
-      currentPage++;
-      renderPaper();
+      gotoPage(currentPage + 1);
+    };
+    nextBtn.addEventListener('click', goNext);
+    nextBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        goNext(e);
+      }
     });
   }
   const backBtn = letterButton.querySelector('.back-page-btn');
   if (backBtn) {
-    backBtn.addEventListener('click', (e) => {
+    const goBack = (e) => {
       e.stopPropagation();
-      currentPage--;
-      renderPaper();
+      gotoPage(currentPage - 1);
+    };
+    backBtn.addEventListener('click', goBack);
+    backBtn.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        goBack(e);
+      }
     });
   }
 }
@@ -955,6 +1033,12 @@ letterButton.addEventListener('click', (e) => {
     envelope.classList.add('is-expanded');
     isExpanded = true;
     playPaperSlide();
+    // Wait for expanded styles to apply, then measure for fit-to-page
+    computedPages = null;
+    setTimeout(() => {
+      recomputePagination();
+      renderPaper();
+    }, 100);
     return;
   }
 
