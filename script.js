@@ -782,6 +782,7 @@ function getPaperMetricsForPaging() {
   if (!envelope.classList.contains('is-expanded')) return null;
   return {
     paperHeight: paper.clientHeight,
+    paperWidth: paper.clientWidth,
     bodyWidth: paperBody.clientWidth,
   };
 }
@@ -790,26 +791,32 @@ function computeFitPages() {
   const metrics = getPaperMetricsForPaging();
   if (!metrics) return null;
 
-  const { paperHeight, bodyWidth } = metrics;
-  if (!paperHeight || !bodyWidth) return null;
+  const { paperHeight, paperWidth, bodyWidth } = metrics;
+  if (!paperHeight || !paperWidth || !bodyWidth) return null;
 
-  const temp = document.createElement('div');
-  temp.className = 'paper-body';
-  temp.style.position = 'fixed';
-  temp.style.left = '-9999px';
-  temp.style.top = '0';
-  temp.style.width = `${bodyWidth}px`;
-  temp.style.visibility = 'hidden';
-  temp.style.pointerEvents = 'none';
-  // Match expanded paper padding for mobile/desktop
-  if (window.innerWidth <= 600) {
-    temp.style.padding = '28px 34px 96px';
-    temp.style.fontSize = '20px';
-  } else {
-    temp.style.padding = '28px 34px 96px';
-    temp.style.fontSize = '24px';
+  // Build an offscreen structure that matches the expanded letter so CSS selectors apply
+  const measureWrap = document.createElement('div');
+  measureWrap.className = 'envelope-wrap is-expanded';
+  measureWrap.style.position = 'fixed';
+  measureWrap.style.left = '-9999px';
+  measureWrap.style.top = '0';
+  measureWrap.style.visibility = 'hidden';
+  measureWrap.style.pointerEvents = 'none';
+  measureWrap.style.zIndex = '-1';
+  measureWrap.innerHTML = `
+    <div class="letter" style="position:relative; left:0; top:0; bottom:auto; transform:none; opacity:1; width:${paperWidth}px; height:${paperHeight}px;">
+      <div class="paper" style="width:${paperWidth}px; height:${paperHeight}px; max-height:none; overflow:hidden;">
+        <div class="paper-body" style="width:${bodyWidth}px;"></div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(measureWrap);
+  const temp = measureWrap.querySelector('.paper-body');
+  const measurePaper = measureWrap.querySelector('.paper');
+  if (!temp || !measurePaper) {
+    document.body.removeChild(measureWrap);
+    return null;
   }
-  document.body.appendChild(temp);
 
   const buttonReserve = 84; // keep room for paging buttons
   const headerHtml = `<h2>${escapeHtml(title)} ${escapeHtml(recipientName)},</h2>`;
@@ -868,7 +875,7 @@ function computeFitPages() {
     }
   }
 
-  document.body.removeChild(temp);
+  document.body.removeChild(measureWrap);
   return pages;
 }
 
