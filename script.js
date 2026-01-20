@@ -388,14 +388,14 @@ class HeartsSystem {
       this.max = 16;
       this.spawnMs = [520, 1100];
     } else {
-      this.max = Number.isFinite(heartsCfg.max) ? heartsCfg.max : 42;
-      this.spawnMs = Array.isArray(heartsCfg.spawnMs) ? heartsCfg.spawnMs : [260, 520];
+      this.max = 24;
+      this.spawnMs = [420, 900];
     }
     // Responsive heart size: smaller on mobile
     if (window.innerWidth <= 600) {
       this.size = [16, 32];
     } else {
-      this.size = Array.isArray(heartsCfg.size) ? heartsCfg.size : [32, 64];
+      this.size = [18, 36];
     }
     this.riseSpeed = Array.isArray(heartsCfg.riseSpeed) ? heartsCfg.riseSpeed : [40, 95];
 
