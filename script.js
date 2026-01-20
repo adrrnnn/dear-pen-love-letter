@@ -383,9 +383,20 @@ class HeartsSystem {
 
     const heartsCfg = (cfg && cfg.hearts) || {};
     this.enabled = heartsCfg.enabled !== false;
-    this.max = Number.isFinite(heartsCfg.max) ? heartsCfg.max : 42;
-    this.spawnMs = Array.isArray(heartsCfg.spawnMs) ? heartsCfg.spawnMs : [260, 520];
-    this.size = Array.isArray(heartsCfg.size) ? heartsCfg.size : [10, 22];
+    // Responsive: fewer hearts and slower spawn on mobile
+    if (window.innerWidth <= 600) {
+      this.max = 16;
+      this.spawnMs = [520, 1100];
+    } else {
+      this.max = Number.isFinite(heartsCfg.max) ? heartsCfg.max : 42;
+      this.spawnMs = Array.isArray(heartsCfg.spawnMs) ? heartsCfg.spawnMs : [260, 520];
+    }
+    // Responsive heart size: smaller on mobile
+    if (window.innerWidth <= 600) {
+      this.size = [16, 32];
+    } else {
+      this.size = Array.isArray(heartsCfg.size) ? heartsCfg.size : [32, 64];
+    }
     this.riseSpeed = Array.isArray(heartsCfg.riseSpeed) ? heartsCfg.riseSpeed : [40, 95];
 
     const popCfg = (heartsCfg && heartsCfg.pop) || {};
@@ -393,6 +404,8 @@ class HeartsSystem {
     this.popSound = popCfg.sound !== false;
 
     this.audioCtx = null;
+    // Preload heart pop sound
+    this.htmlHeartPop = new Audio('audio/665183__el_boss__item-or-material-pickup-pop-1-of-3.wav');
 
     this.nextSpawn = rand(this.spawnMs[0], this.spawnMs[1]);
 
@@ -455,7 +468,7 @@ class HeartsSystem {
       wobble: rand(0, Math.PI * 2),
       color: pick(this.colors),
       life: 0,
-      ttl: rand(6.0, 10.0),
+      ttl: rand(22.0, 32.0), // Much longer lifetime
       popping: false,
       popT: 0,
       _cx: 0,
@@ -611,34 +624,12 @@ class HeartsSystem {
   }
 
   playPop() {
-    // Use Tone.js for a cartoon bubble pop
-    if (typeof Tone === 'undefined') return;
-    // Main pop: short, low sine with a fast pitch drop and a little pitch "blip"
-    const now = Tone.now();
-    const synth = new Tone.MembraneSynth({
-      pitchDecay: 0.04,
-      octaves: 2.5,
-      oscillator: { type: 'sine' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.13,
-        sustain: 0.0,
-        release: 0.01
-      }
-    }).toDestination();
-    synth.triggerAttackRelease('C4', 0.14, now, 0.7);
-
-    // Add a quick high "blip" for cartooniness
-    const blip = new Tone.Synth({
-      oscillator: { type: 'sine' },
-      envelope: {
-        attack: 0.001,
-        decay: 0.04,
-        sustain: 0.0,
-        release: 0.01
-      }
-    }).toDestination();
-    blip.triggerAttackRelease('C6', 0.05, now + 0.01, 0.25);
+    // Play natural pop sound for heart pop
+    if (this.htmlHeartPop) {
+      this.htmlHeartPop.volume = 0.7;
+      this.htmlHeartPop.currentTime = 0;
+      playHtmlAudio(this.htmlHeartPop);
+    }
   }
 
   popAt(x, y) {
@@ -671,7 +662,8 @@ class HeartsSystem {
       this.spawnT = 0;
       this.nextSpawn = rand(this.spawnMs[0], this.spawnMs[1]);
       this.spawn();
-      if (Math.random() < 0.25) this.spawn();
+      // Only desktop gets burst spawns
+      if (window.innerWidth > 600 && Math.random() < 0.25) this.spawn();
     }
 
     // Integrate
@@ -710,7 +702,7 @@ class HeartsSystem {
     this.resolveCollisions();
 
     // Remove dead
-    this.hearts = this.hearts.filter((h) => h.life < h.ttl && h.y + h.r > -80);
+    this.hearts = this.hearts.filter((h) => h.life < h.ttl && h.y + h.r > -h.r);
 
     // Draw
     this.ctx.clearRect(0, 0, this.w, this.h);

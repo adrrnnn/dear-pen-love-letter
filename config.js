@@ -39,7 +39,7 @@ window.LOVE_LETTER_CONFIG = {
     // Spawn interval range (ms)
     spawnMs: [260, 520],
     // Heart radius range (px)
-    size: [10, 22],
+    size: [32, 64],
     // Upward speed range (px/s)
     riseSpeed: [40, 95],
 
