@@ -203,6 +203,7 @@ function playPaperRustle() {
   const playSeconds = 0.45; // Match animation duration (adjust as needed)
   ensureHtmlAudio();
   playHtmlAudio(htmlLetterClick, seekSeconds, playSeconds);
+  // No fallback noise
   return;
 }
 
@@ -212,6 +213,7 @@ function playEnvelopeClose() {
   const playSeconds = 0.45; // Match animation duration (adjust as needed)
   ensureHtmlAudio();
   playHtmlAudio(htmlLetterClick, seekSeconds, playSeconds);
+  // No fallback noise
   return;
 }
 
