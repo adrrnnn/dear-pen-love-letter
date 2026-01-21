@@ -198,114 +198,21 @@ function ensureSfxPlayers() {
 
 
 function playPaperRustle() {
-  const seekSeconds = getSfxSeekSeconds('envelope', 1.6);
-  const playSeconds = getSfxPlaySeconds('envelope', 0);
-  // Prefer HTMLAudio when Tone isn't available OR isn't running yet.
-  if (
-    isFileProtocol() ||
-    typeof Tone === 'undefined' ||
-    !Tone.context ||
-    Tone.context.state !== 'running'
-  ) {
-    ensureHtmlAudio();
-    playHtmlAudio(htmlEnvelopeOpen, seekSeconds, playSeconds);
-    return;
-  }
-
-  ensureToneStarted();
-  ensureSfxPlayers();
-
-  if (sfxEnvelopeOpen && sfxEnvelopeOpen.loaded) {
-    if (typeof sfxEnvelopeOpen.playbackRate === 'number') {
-      sfxEnvelopeOpen.playbackRate = 0.98 + Math.random() * 0.04;
-    }
-    const dur = sfxEnvelopeOpen.buffer ? sfxEnvelopeOpen.buffer.duration : 0;
-    const t = dur ? clampNumber(seekSeconds, 0, Math.max(0, dur - 0.05)) : 0;
-    const maxPlay = playSeconds > 0 && dur ? clampNumber(playSeconds, 0, Math.max(0.01, dur - t)) : undefined;
-    if (typeof sfxEnvelopeOpen.start === 'function') {
-      try {
-        sfxEnvelopeOpen.start(undefined, t, maxPlay);
-      } catch (e) {}
-    }
-    return;
-  }
-
-  // Fallback: airy noise rustle
-  const now = Tone.now();
-  const noise = new Tone.Noise('white').start(now);
-  const filter = new Tone.Filter(5200, 'lowpass').toDestination();
-  try {
-    if (filter && filter.volume && typeof filter.volume.value === 'number') {
-      filter.volume.value = -24;
-    }
-  } catch {}
-  const env = new Tone.AmplitudeEnvelope({
-    attack: 0.02,
-    decay: 0.16,
-    sustain: 0.0,
-    release: 0.04,
-  }).connect(filter);
-  noise.connect(env);
-  env.triggerAttackRelease(0.16, now);
-  setTimeout(() => {
-    noise.stop();
-    env.dispose();
-    filter.dispose();
-    noise.dispose();
-  }, 220);
+  // Use letter-click.wav for envelope open sound, match animation speed
+  const seekSeconds = getSfxSeekSeconds('letter', 0.0);
+  const playSeconds = 0.45; // Match animation duration (adjust as needed)
+  ensureHtmlAudio();
+  playHtmlAudio(htmlLetterClick, seekSeconds, playSeconds);
+  return;
 }
 
 function playEnvelopeClose() {
-  const seekSeconds = getSfxSeekByKey('envelopeCloseSeekSeconds', getSfxSeekSeconds('envelope', 1.6));
-  const playSeconds = getSfxPlayByKey('envelopeClosePlaySeconds', getSfxPlaySeconds('envelope', 0));
-
-  // Prefer HTMLAudio when Tone isn't available OR isn't running yet.
-  if (
-    isFileProtocol() ||
-    typeof Tone === 'undefined' ||
-    !Tone.context ||
-    Tone.context.state !== 'running'
-  ) {
-    ensureHtmlAudio();
-    playHtmlAudio(htmlEnvelopeOpen, seekSeconds, playSeconds);
-    return;
-  }
-
-  ensureToneStarted();
-  ensureSfxPlayers();
-
-  if (sfxEnvelopeOpen && sfxEnvelopeOpen.loaded) {
-    sfxEnvelopeOpen.playbackRate = 0.98 + Math.random() * 0.04;
-    const dur = sfxEnvelopeOpen.buffer ? sfxEnvelopeOpen.buffer.duration : 0;
-    const t = dur ? clampNumber(seekSeconds, 0, Math.max(0, dur - 0.05)) : 0;
-    const maxPlay = playSeconds > 0 && dur ? clampNumber(playSeconds, 0, Math.max(0.01, dur - t)) : undefined;
-    sfxEnvelopeOpen.start(undefined, t, maxPlay);
-    return;
-  }
-
-  // If Tone isn't ready yet, fall back to the same noise rustle.
-  const now = Tone.now();
-  const noise = new Tone.Noise('white').start(now);
-  const filter = new Tone.Filter(5200, 'lowpass').toDestination();
-  try {
-    if (filter && filter.volume && typeof filter.volume.value === 'number') {
-      filter.volume.value = -24;
-    }
-  } catch {}
-  const env = new Tone.AmplitudeEnvelope({
-    attack: 0.02,
-    decay: 0.16,
-    sustain: 0.0,
-    release: 0.04,
-  }).connect(filter);
-  noise.connect(env);
-  env.triggerAttackRelease(0.16, now);
-  setTimeout(() => {
-    noise.stop();
-    env.dispose();
-    filter.dispose();
-    noise.dispose();
-  }, 220);
+  // Use letter-click.wav for envelope close sound, match animation speed
+  const seekSeconds = getSfxSeekSeconds('letter', 0.0);
+  const playSeconds = 0.45; // Match animation duration (adjust as needed)
+  ensureHtmlAudio();
+  playHtmlAudio(htmlLetterClick, seekSeconds, playSeconds);
+  return;
 }
 
 
