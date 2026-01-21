@@ -252,19 +252,22 @@ body {
   padding: 18px 18px 18px;
   text-align: center;
   z-index: 1;
-  font-family: "Comic Sans MS", "Comic Sans", cursive;
+  font-family: 'Comic Neue', 'Comic Sans MS', 'Comic Sans', cursive;
   color: #d72660;
 }
 
 .paper-body h2 {
   margin: 16px 0 10px;
   font-size: 28px;
+  font-family: 'Comic Neue', 'Comic Sans MS', 'Comic Sans', cursive;
+  font-weight: bold;
 }
 
 .paper-body p {
   margin: 10px 0;
   font-size: 24px;
   opacity: 0.96;
+  font-family: 'Comic Neue', 'Comic Sans MS', 'Comic Sans', cursive;
 }
 
 /* Expanded letter should read like a real note (left aligned) */

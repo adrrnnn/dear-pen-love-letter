@@ -1,3 +1,27 @@
+// Mobile sound unlock: ensure Tone.js and HTMLAudio are started on first user gesture
+function unlockMobileAudio() {
+  try {
+    if (typeof Tone !== 'undefined' && Tone.context && Tone.context.state !== 'running') {
+      Tone.start();
+    }
+    ensureHtmlAudio();
+    // Play a silent sound to unlock HTMLAudio
+    if (htmlEnvelopeOpen) {
+      htmlEnvelopeOpen.volume = 0;
+      htmlEnvelopeOpen.play().catch(() => {});
+      setTimeout(() => { htmlEnvelopeOpen.volume = 0.55; }, 100);
+    }
+    if (htmlLetterClick) {
+      htmlLetterClick.volume = 0;
+      htmlLetterClick.play().catch(() => {});
+      setTimeout(() => { htmlLetterClick.volume = 0.5; }, 100);
+    }
+  } catch {}
+  window.removeEventListener('touchstart', unlockMobileAudio);
+  window.removeEventListener('mousedown', unlockMobileAudio);
+}
+window.addEventListener('touchstart', unlockMobileAudio, { once: true });
+window.addEventListener('mousedown', unlockMobileAudio, { once: true });
 // --- Paper/Envelope Sound Effects (CC0 samples via Tone.js, with fallback) ---
 
 let sfxEnvelopeOpen = null;
