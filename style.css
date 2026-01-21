@@ -1,3 +1,78 @@
+.js-hide {
+  display: none !important;
+}
+.js-hide {
+  display: none !important;
+}
+@media (min-width: 601px) {
+  .envelope-wrap.is-expanded .paper-body {
+    padding-bottom: 120px;
+    height: auto;
+    display: block;
+  }
+}
+@media (min-width: 601px) {
+  .envelope-wrap.is-expanded .paper-body {
+    padding-bottom: 120px;
+  }
+  .envelope-wrap.is-expanded .paper {
+    position: relative;
+  }
+  .envelope-wrap.is-expanded .paper .next-page-btn,
+  .envelope-wrap.is-expanded .paper .back-page-btn {
+    position: absolute !important;
+    bottom: 36px !important;
+    z-index: 10;
+    font-size: 20px !important;
+    padding: 10px 26px !important;
+    border-radius: 12px;
+    background: #fffbe7;
+    color: #1b2c8e;
+    border: 2px solid #1b2c8e;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    cursor: pointer;
+    user-select: none;
+    transform: rotate(-1.5deg);
+  }
+  .envelope-wrap.is-expanded .paper .next-page-btn {
+    right: 48px !important;
+    left: auto !important;
+  }
+  .envelope-wrap.is-expanded .paper .back-page-btn {
+    left: 48px !important;
+    right: auto !important;
+  }
+}
+/* Anchor desktop nav buttons at the same position for all pages */
+@media (min-width: 601px) {
+  .envelope-wrap.is-expanded .paper {
+    position: relative;
+  }
+  .envelope-wrap.is-expanded .next-page-btn,
+  .envelope-wrap.is-expanded .back-page-btn {
+    position: absolute !important;
+    bottom: 36px !important;
+    z-index: 10;
+    font-size: 20px !important;
+    padding: 10px 26px !important;
+    border-radius: 12px;
+    background: #fffbe7;
+    color: #1b2c8e;
+    border: 2px solid #1b2c8e;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    cursor: pointer;
+    user-select: none;
+    transform: rotate(-1.5deg);
+  }
+  .envelope-wrap.is-expanded .next-page-btn {
+    right: 48px !important;
+    left: auto !important;
+  }
+  .envelope-wrap.is-expanded .back-page-btn {
+    left: 48px !important;
+    right: auto !important;
+  }
+}
 @media (max-width: 600px) {
   .envelope-wrap.is-expanded .paper {
     position: relative;
@@ -299,4 +374,11 @@ body {
     font-size: 12px;
   }
 
-/* Removed duplicate/old mobile button rules to allow main mobile button rule to take effect */
+/* Always hide nav buttons unless expanded */
+.next-page-btn, .back-page-btn {
+  display: none !important;
+}
+.envelope-wrap.is-expanded .next-page-btn,
+.envelope-wrap.is-expanded .back-page-btn {
+  display: block !important;
+}

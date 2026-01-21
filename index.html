@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Minimal FOUC fix: .js-hide class is handled by JS -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Animated Letter Envelope</title>
   <link rel="stylesheet" href="style.css">
@@ -10,7 +11,7 @@
   <canvas id="hearts-canvas" aria-hidden="true"></canvas>
   <div class="stage">
     <div class="envelope-wrap" id="envelope">
-      <div class="letter" id="letter" role="button" tabindex="0" aria-label="Open letter" title="Open letter"></div>
+      <div class="letter js-hide" id="letter" role="button" tabindex="0" aria-label="Open letter" title="Open letter"></div>
 
       <svg id="envelope-svg" viewBox="0 0 320 260" width="480" height="390" role="img" aria-label="Envelope">
         <defs>

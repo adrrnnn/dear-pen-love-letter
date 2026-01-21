@@ -951,31 +951,24 @@ function buildLetterContentHtml() {
   const sig = signature && isLast ? `<p class=\"signature\">${escapeHtml(signature)}</p>` : '';
   let nextBtn = '';
   let backBtn = '';
-  // Mobile: move buttons outside .paper-body for true bottom placement
-  if (window.innerWidth <= 600) {
-    if (!isLast) {
-      nextBtn = `<div class=\"next-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; right:10px; bottom:4px; font-size:13px; padding:5px 8px; border-radius:8px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none; max-width:140px; width:auto; z-index:10;\">Next Page →</div>`;
-    }
-    if (currentPage > 0) {
-      backBtn = `<div class=\"back-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; left:10px; bottom:4px; font-size:13px; padding:5px 8px; border-radius:8px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none; max-width:140px; width:auto; z-index:10;\">← Back</div>`;
-    }
-    // Render only the content and signature inside letter-content, buttons outside
-    return `<div class=\"letter-content\" aria-live=\"polite\">${html}${sig}</div>${backBtn}${nextBtn}`;
+  // Only show navigation buttons if envelope is expanded
+  if (!isExpanded) {
+    // Never render nav buttons if not expanded
+    return `<div class="letter-content" aria-live="polite">${html}${sig}</div>`;
   }
-  // Desktop: unchanged
   if (!isLast) {
-    nextBtn = `<div class=\"next-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; right:48px; bottom:36px; transform:rotate(-1.5deg); font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;\">Next Page →</div>`;
+    nextBtn = `<div class="next-page-btn" role="button" tabindex="0" style="position:absolute; right:48px; bottom:36px; transform:rotate(-1.5deg); font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;">Next Page →</div>`;
   }
   if (currentPage > 0) {
-    backBtn = `<div class=\"back-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; left:48px; bottom:36px; transform:rotate(-1.5deg); font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;\">← Back</div>`;
+    backBtn = `<div class="back-page-btn" role="button" tabindex="0" style="position:absolute; left:48px; bottom:36px; transform:rotate(-1.5deg); font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;">← Back</div>`;
   }
   // On the last page, if both buttons would overflow, only show the back button
   if (isLast && currentPage > 0) {
     // Only show back button, but place it at the bottom right (where next button would be)
-    const rightBackBtn = `<div class=\"back-page-btn\" role=\"button\" tabindex=\"0\" style=\"position:absolute; right:48px; left:auto; bottom:80px; transform:rotate(-1.5deg); font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;\">← Back</div>`;
-    return `<div class=\"letter-content\" aria-live=\"polite\">${html}${sig}${rightBackBtn}</div>`;
+    const rightBackBtn = `<div class="back-page-btn" role="button" tabindex="0" style="position:absolute; right:48px; left:auto; bottom:80px; transform:rotate(-1.5deg); font-size:20px; padding:10px 26px; border-radius:12px; background:#fffbe7; color:#1b2c8e; border:2px solid #1b2c8e; box-shadow:0 2px 8px rgba(0,0,0,0.08); cursor:pointer; user-select:none;">← Back</div>`;
+    return `<div class="letter-content" aria-live="polite">${html}${sig}${rightBackBtn}</div>`;
   }
-  return `<div class=\"letter-content\" aria-live=\"polite\">${html}${sig}${backBtn}${nextBtn}</div>`;
+  return `<div class="letter-content" aria-live="polite">${html}${sig}${backBtn}${nextBtn}</div>`;
 }
 
 function getTotalPagesForNav() {
@@ -998,10 +991,8 @@ function renderPaper() {
   const spans = Array.from({ length: Math.max(4, peekLineCount) }, () => '<span></span>').join('');
   // On mobile, navigation buttons are rendered outside .paper-body for true bottom anchoring
   if (window.innerWidth <= 600) {
-    // Split content and buttons
+    // Mobile: keep as is
     const contentAndBtns = buildLetterContentHtml();
-    // contentAndBtns is: <div class="letter-content">...</div>[backBtn][nextBtn]
-    // Extract the letter-content and the buttons
     const match = contentAndBtns.match(/^(<div class=\"letter-content\"[\s\S]*?<\/div>)([\s\S]*)$/);
     let letterContent = contentAndBtns;
     let navBtns = '';
@@ -1021,15 +1012,24 @@ function renderPaper() {
       </div>
     `;
   } else {
-    // Desktop: unchanged
+    // Desktop: move nav buttons outside .paper-body for true bottom anchoring
+    const contentAndBtns = buildLetterContentHtml();
+    const match = contentAndBtns.match(/^(<div class=\"letter-content\"[\s\S]*?<\/div>)([\s\S]*)$/);
+    let letterContent = contentAndBtns;
+    let navBtns = '';
+    if (match) {
+      letterContent = match[1];
+      navBtns = match[2];
+    }
     letterButton.innerHTML = `
       <div class="paper">
         <div class="paper-body">
           <div class="peek-lines" aria-hidden="true">
             ${spans}
           </div>
-          ${buildLetterContentHtml()}
+          ${letterContent}
         </div>
+        ${navBtns}
       </div>
     `;
   }
@@ -1071,7 +1071,13 @@ function renderPaper() {
 // Replace all renderPaperWithDebug() calls with renderPaper()
 
 // At the end of the file, after all event listeners and initial render:
-renderPaper();
+
+// Minimal FOUC fix: remove .js-hide after first render
+function renderPaperWithReveal() {
+  renderPaper();
+  letterButton.classList.remove('js-hide');
+}
+renderPaperWithReveal();
 
 window.addEventListener(
   'resize',
@@ -1103,14 +1109,11 @@ envelopeClickTarget.addEventListener('click', () => {
   if (isExpanded) {
     envelope.classList.remove('is-expanded');
     isExpanded = false;
+    renderPaper(); // Immediately hide nav buttons
     // Add a small paper rustle on close as it collapses back in.
     playPaperSlide();
-    window.setTimeout(renderCollapsedPaper, 80);
-    window.setTimeout(() => {
-      playEnvelopeClose();
-      envelope.classList.remove('is-open');
-      isOpen = false;
-    }, 420);
+    // Optionally re-render after animation for any layout tweaks
+    window.setTimeout(renderPaper, 100);
     return;
   }
 
@@ -1138,7 +1141,10 @@ letterButton.addEventListener('click', (e) => {
   }
   envelope.classList.remove('is-expanded');
   isExpanded = false;
+  renderPaper(); // Immediately hide nav buttons
   playPaperSlide();
+  // Optionally re-render after animation for any layout tweaks
+  window.setTimeout(renderPaper, 120);
 });
 
 document.addEventListener('keydown', (e) => {
@@ -1146,7 +1152,10 @@ document.addEventListener('keydown', (e) => {
   if (!isExpanded) return;
   envelope.classList.remove('is-expanded');
   isExpanded = false;
+  renderPaper(); // Immediately hide nav buttons
   playPaperSlide();
+  // Optionally re-render after animation for any layout tweaks
+  window.setTimeout(renderPaper, 120);
 });
 
 // Start hearts
