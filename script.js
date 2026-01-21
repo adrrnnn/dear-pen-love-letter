@@ -219,55 +219,12 @@ function playEnvelopeClose() {
 
 
 function playPaperSlide() {
-  const seekSeconds = getSfxSeekSeconds('letter', 1.4);
-  const playSeconds = getSfxPlaySeconds('letter', 0);
-  // Prefer HTMLAudio when Tone isn't available OR isn't running yet.
-  if (
-    isFileProtocol() ||
-    typeof Tone === 'undefined' ||
-    !Tone.context ||
-    Tone.context.state !== 'running'
-  ) {
-    ensureHtmlAudio();
-    playHtmlAudio(htmlLetterClick, seekSeconds, playSeconds);
-    return;
-  }
-
-  ensureToneStarted();
-  ensureSfxPlayers();
-
-  if (sfxLetterClick && sfxLetterClick.loaded) {
-    sfxLetterClick.playbackRate = 0.98 + Math.random() * 0.04;
-    const dur = sfxLetterClick.buffer ? sfxLetterClick.buffer.duration : 0;
-    const t = dur ? clampNumber(seekSeconds, 0, Math.max(0, dur - 0.05)) : 0;
-    const maxPlay = playSeconds > 0 && dur ? clampNumber(playSeconds, 0, Math.max(0.01, dur - t)) : undefined;
-    sfxLetterClick.start(undefined, t, maxPlay);
-    return;
-  }
-
-  // Fallback: subtle filtered noise slide
-  const now = Tone.now();
-  const noise = new Tone.Noise('white').start(now);
-  const filter = new Tone.Filter(3000, 'lowpass').toDestination();
-  try {
-    if (filter && filter.volume && typeof filter.volume.value === 'number') {
-      filter.volume.value = -20;
-    }
-  } catch {}
-  const env = new Tone.AmplitudeEnvelope({
-    attack: 0.006,
-    decay: 0.11,
-    sustain: 0.0,
-    release: 0.02,
-  }).connect(filter);
-  noise.connect(env);
-  env.triggerAttackRelease(0.11, now);
-  setTimeout(() => {
-    noise.stop();
-    env.dispose();
-    filter.dispose();
-    noise.dispose();
-  }, 170);
+  // Always play letter-click.wav for paper slide, no fallback noise
+  const seekSeconds = getSfxSeekSeconds('letter', 0.0);
+  const playSeconds = 0.45;
+  ensureHtmlAudio();
+  playHtmlAudio(htmlLetterClick, seekSeconds, playSeconds);
+  return;
 }
 const envelope = document.getElementById('envelope');
 const envelopeSvg = document.getElementById('envelope-svg');
